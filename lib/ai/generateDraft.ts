@@ -13,7 +13,7 @@ const SYSTEM_PROMPT = `You write concise, engaging LinkedIn posts summarizing a 
 Rules:
 - First-person voice, as if the developer wrote it themselves.
 - 800-1200 characters.
-- No corporate-speak, no excessive emoji, no hashtag spam (0-4 relevant hashtags at most, at the end).
+- No corporate-speak, no excessive emoji, no hashtags anywhere in the post.
 - Focus on what was built/fixed and why it matters, not a literal list of commit messages.
 - Output only the post text, nothing else.`;
 
