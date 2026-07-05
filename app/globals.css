@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --term-bg: #080808;
+  --term-bg-2: #0c0c0c;
+  --term-border: #111111;
+  --term-border-2: #141414;
+  --term-border-3: #0f0f0f;
+  --term-border-4: #1a1a1a;
+  --term-border-5: #1e1e1e;
+  --term-border-6: #222222;
+
+  --term-text-primary: #c8c8c8;
+  --term-text-body: #9a9a9a;
+  --term-text-secondary: #8a8a8a;
+  --term-text-muted: #7a7a7a;
+  --term-text-meta: #6b6b6b;
+  --term-text-faint: #545454;
+  --term-text-dim: #3a3a3a;
+
+  --term-accent: oklch(62% 0.24 280);
+  --term-accent-bg: oklch(62% 0.24 280 / 0.12);
+  --term-amber: oklch(75% 0.16 88);
+  --term-green: oklch(65% 0.18 145);
+  --term-red: oklch(58% 0.2 22);
+  --term-red-2: oklch(55% 0.22 22);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-term-bg: var(--term-bg);
+  --color-term-bg-2: var(--term-bg-2);
+  --color-term-border: var(--term-border);
+  --color-term-border-2: var(--term-border-2);
+  --color-term-border-3: var(--term-border-3);
+  --color-term-border-4: var(--term-border-4);
+  --color-term-border-5: var(--term-border-5);
+  --color-term-border-6: var(--term-border-6);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-term-text-primary: var(--term-text-primary);
+  --color-term-text-body: var(--term-text-body);
+  --color-term-text-secondary: var(--term-text-secondary);
+  --color-term-text-muted: var(--term-text-muted);
+  --color-term-text-meta: var(--term-text-meta);
+  --color-term-text-faint: var(--term-text-faint);
+  --color-term-text-dim: var(--term-text-dim);
+
+  --color-term-accent: var(--term-accent);
+  --color-term-accent-bg: var(--term-accent-bg);
+  --color-term-amber: var(--term-amber);
+  --color-term-green: var(--term-green);
+  --color-term-red: var(--term-red);
+  --color-term-red-2: var(--term-red-2);
+
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--term-bg);
+  color: var(--term-text-primary);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }

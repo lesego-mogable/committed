@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  accounts ConnectedAccount[]
+  repos    TrackedRepo[]
+  drafts   Draft[]
+}
+
+model ConnectedAccount {
+  id             String    @id @default(cuid())
+  userId         String
+  provider       String // "github" | "linkedin"
+  providerUserId String
+  accessToken    String // encrypted at rest
+  refreshToken   String? // encrypted at rest
+  tokenExpiresAt DateTime?
+  scope          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
+
+model TrackedRepo {
+  id            String   @id @default(cuid())
+  userId        String
+  githubRepoId  Int
+  owner         String
+  name          String
+  fullName      String
+  webhookId     Int?
+  webhookSecret String // encrypted at rest
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drafts Draft[]
+
+  @@unique([userId, githubRepoId])
+}
+
+enum DraftStatus {
+  pending
+  approved
+  posted
+  rejected
+}
+
+model Draft {
+  id              String      @id @default(cuid())
+  userId          String
+  trackedRepoId   String
+  status          DraftStatus @default(pending)
+  content         String
+  originalContent String
+  sourceRefs      Json
+  aiModel         String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackedRepo TrackedRepo  @relation(fields: [trackedRepoId], references: [id], onDelete: Cascade)
+  postHistory PostHistory?
+}
+
+model PostHistory {
+  id              String   @id @default(cuid())
+  draftId         String   @unique
+  linkedinPostUrn String
+  postedAt        DateTime @default(now())
+  finalContent    String
+
+  draft Draft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+}
