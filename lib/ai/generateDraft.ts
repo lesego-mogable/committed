@@ -14,13 +14,16 @@ Rules:
 - First-person voice, as if the developer wrote it themselves.
 - 800-1200 characters.
 - No corporate-speak, no excessive emoji, no hashtags anywhere in the post.
-- Focus on what was built/fixed and why it matters, not a literal list of commit messages.
+- Use the project description/README context to explain what the project actually is and where it currently stands, not just to list commit messages verbatim.
+- Focus on what was built/fixed in this update, why it matters, and how it moves the project forward — as a snapshot of current progress, not a changelog.
 - Output only the post text, nothing else.`;
 
 export type DraftCommit = { sha: string; message: string; url: string };
 
 export type DraftInput = {
   repoFullName: string;
+  repoDescription?: string;
+  readmeExcerpt?: string;
   commits: DraftCommit[];
   compareUrl?: string;
   diffStats?: { filesChanged: number; additions: number; deletions: number };
@@ -33,12 +36,14 @@ export type DraftResult = { content: string; model: string };
 export async function generateDraft(input: DraftInput): Promise<DraftResult> {
   const lines = [
     `Repository: ${input.repoFullName}`,
+    input.repoDescription ? `Project description: ${input.repoDescription}` : null,
+    input.readmeExcerpt ? `Project README (context on what this project is and its current state):\n${input.readmeExcerpt}` : null,
     input.prTitle ? `Pull request: ${input.prTitle}` : null,
     input.prBody ? `Pull request description: ${input.prBody}` : null,
     input.diffStats
-      ? `Diff stats: ${input.diffStats.filesChanged} files changed, +${input.diffStats.additions}/-${input.diffStats.deletions}`
+      ? `Diff stats for this update: ${input.diffStats.filesChanged} files changed, +${input.diffStats.additions}/-${input.diffStats.deletions}`
       : null,
-    "Commits:",
+    "Commits in this update:",
     ...input.commits.map((c) => `- ${c.message}`),
   ].filter(Boolean);
 
@@ -49,7 +54,7 @@ export async function generateDraft(input: DraftInput): Promise<DraftResult> {
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Summarize the work described below into a LinkedIn post draft.\n\n${lines.join("\n")}`,
+        content: `Using the project context and this update's changes below, write a LinkedIn post draft that situates the update within the bigger picture of the project.\n\n${lines.join("\n")}`,
       },
     ],
   });

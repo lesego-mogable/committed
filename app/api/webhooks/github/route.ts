@@ -93,8 +93,12 @@ async function handlePush(
     payload.after
   );
 
+  const repoContext = await tryGetRepoContext(trackedRepo.userId, trackedRepo.owner, trackedRepo.name);
+
   const { content, model } = await generateDraft({
     repoFullName: payload.repository.full_name,
+    repoDescription: repoContext?.description,
+    readmeExcerpt: repoContext?.readmeExcerpt,
     commits,
     compareUrl: payload.compare,
     diffStats: diffStats ?? undefined,
@@ -128,8 +132,12 @@ async function handlePullRequest(
       ]
     : [];
 
+  const repoContext = await tryGetRepoContext(trackedRepo.userId, trackedRepo.owner, trackedRepo.name);
+
   const { content, model } = await generateDraft({
     repoFullName: payload.repository.full_name,
+    repoDescription: repoContext?.description,
+    readmeExcerpt: repoContext?.readmeExcerpt,
     commits,
     prTitle: payload.pull_request.title,
     prBody: payload.pull_request.body ?? undefined,
@@ -160,6 +168,42 @@ async function draftExistsForCommits(trackedRepoId: string, commits: DraftCommit
     const existingShas = (refs.commits ?? []).map((c) => c.sha).sort();
     return existingShas.length === shas.length && existingShas.every((sha, i) => sha === shas[i]);
   });
+}
+
+const README_EXCERPT_MAX_CHARS = 3000;
+
+async function tryGetRepoContext(
+  userId: string,
+  owner: string,
+  repo: string
+): Promise<{ description?: string; readmeExcerpt?: string } | null> {
+  try {
+    const octokit = await getOctokitForUser(userId);
+    const [{ data: repoData }, readmeExcerpt] = await Promise.all([
+      octokit.rest.repos.get({ owner, repo }),
+      tryGetReadme(octokit, owner, repo),
+    ]);
+    return {
+      description: repoData.description ?? undefined,
+      readmeExcerpt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function tryGetReadme(
+  octokit: Awaited<ReturnType<typeof getOctokitForUser>>,
+  owner: string,
+  repo: string
+): Promise<string | undefined> {
+  try {
+    const { data } = await octokit.rest.repos.getReadme({ owner, repo });
+    const text = Buffer.from(data.content, "base64").toString("utf-8");
+    return text.slice(0, README_EXCERPT_MAX_CHARS);
+  } catch {
+    return undefined;
+  }
 }
 
 async function tryGetDiffStats(
