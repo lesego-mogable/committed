@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { relativeTimeCompact } from "@/lib/format";
 
@@ -22,6 +23,7 @@ async function fetchRepos(): Promise<Repo[]> {
 }
 
 export function RepoList() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: repos, isLoading, error } = useQuery({
     queryKey: ["repos"],
@@ -53,6 +55,19 @@ export function RepoList() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["repos"] }),
   });
 
+  const intro = useMutation({
+    mutationFn: async (trackedRepoId: string) => {
+      const res = await fetch(`/api/repos/${trackedRepoId}/intro`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate intro draft");
+      const data = await res.json();
+      return data.draft as { id: string };
+    },
+    onSuccess: (draft) => {
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      router.push(`/drafts/${draft.id}`);
+    },
+  });
+
   if (isLoading) return <p className="px-5 py-4 text-[11px] text-term-text-muted">loading…</p>;
   if (error)
     return <p className="px-5 py-4 text-[11px] text-term-red">{(error as Error).message}</p>;
@@ -66,7 +81,7 @@ export function RepoList() {
         <span className="w-[70px] text-[10px] font-medium tracking-[0.08em] text-term-text-faint">
           VIS
         </span>
-        <span className="w-[100px] text-right text-[10px] font-medium tracking-[0.08em] text-term-text-faint">
+        <span className="w-[168px] text-right text-[10px] font-medium tracking-[0.08em] text-term-text-faint">
           STATUS
         </span>
       </div>
@@ -86,7 +101,18 @@ export function RepoList() {
           <div className="w-[70px] text-[10px] text-term-text-muted">
             {repo.private ? "priv" : "pub"}
           </div>
-          <div className="w-[100px] text-right">
+          <div className="flex w-[168px] items-center justify-end gap-1.5 text-right">
+            {repo.isTracked && (
+              <button
+                type="button"
+                disabled={intro.isPending}
+                onClick={() => repo.trackedRepoId && intro.mutate(repo.trackedRepoId)}
+                title="Generate an introduction post for this project"
+                className="border border-term-border-6 px-2 py-0.5 font-medium text-[10px] tracking-[0.04em] text-term-text-muted transition-colors disabled:opacity-40 enabled:hover:border-term-text-muted enabled:hover:text-term-text-primary"
+              >
+                [ intro ]
+              </button>
+            )}
             {repo.isTracked ? (
               <button
                 type="button"

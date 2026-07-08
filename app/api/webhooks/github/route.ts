@@ -1,7 +1,7 @@
 import { verify } from "@octokit/webhooks-methods";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
-import { getOctokitForUser } from "@/lib/github";
+import { getOctokitForUser, tryGetRepoContext } from "@/lib/github";
 import { generateDraft, type DraftCommit } from "@/lib/ai/generateDraft";
 
 export const maxDuration = 60;
@@ -85,15 +85,11 @@ async function handlePush(
   const alreadyDrafted = await draftExistsForCommits(trackedRepo.id, commits);
   if (alreadyDrafted) return;
 
-  const diffStats = await tryGetDiffStats(
-    trackedRepo.userId,
-    trackedRepo.owner,
-    trackedRepo.name,
-    payload.before,
-    payload.after
-  );
-
-  const repoContext = await tryGetRepoContext(trackedRepo.userId, trackedRepo.owner, trackedRepo.name);
+  const octokit = await getOctokitForUser(trackedRepo.userId);
+  const [diffStats, repoContext] = await Promise.all([
+    tryGetDiffStats(octokit, trackedRepo.owner, trackedRepo.name, payload.before, payload.after),
+    tryGetRepoContext(octokit, trackedRepo.owner, trackedRepo.name),
+  ]);
 
   const { content, model } = await generateDraft({
     repoFullName: payload.repository.full_name,
@@ -132,7 +128,8 @@ async function handlePullRequest(
       ]
     : [];
 
-  const repoContext = await tryGetRepoContext(trackedRepo.userId, trackedRepo.owner, trackedRepo.name);
+  const octokit = await getOctokitForUser(trackedRepo.userId);
+  const repoContext = await tryGetRepoContext(octokit, trackedRepo.owner, trackedRepo.name);
 
   const { content, model } = await generateDraft({
     repoFullName: payload.repository.full_name,
@@ -170,51 +167,14 @@ async function draftExistsForCommits(trackedRepoId: string, commits: DraftCommit
   });
 }
 
-const README_EXCERPT_MAX_CHARS = 3000;
-
-async function tryGetRepoContext(
-  userId: string,
-  owner: string,
-  repo: string
-): Promise<{ description?: string; readmeExcerpt?: string } | null> {
-  try {
-    const octokit = await getOctokitForUser(userId);
-    const [{ data: repoData }, readmeExcerpt] = await Promise.all([
-      octokit.rest.repos.get({ owner, repo }),
-      tryGetReadme(octokit, owner, repo),
-    ]);
-    return {
-      description: repoData.description ?? undefined,
-      readmeExcerpt,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function tryGetReadme(
-  octokit: Awaited<ReturnType<typeof getOctokitForUser>>,
-  owner: string,
-  repo: string
-): Promise<string | undefined> {
-  try {
-    const { data } = await octokit.rest.repos.getReadme({ owner, repo });
-    const text = Buffer.from(data.content, "base64").toString("utf-8");
-    return text.slice(0, README_EXCERPT_MAX_CHARS);
-  } catch {
-    return undefined;
-  }
-}
-
 async function tryGetDiffStats(
-  userId: string,
+  octokit: Awaited<ReturnType<typeof getOctokitForUser>>,
   owner: string,
   repo: string,
   before: string,
   after: string
 ): Promise<{ filesChanged: number; additions: number; deletions: number } | null> {
   try {
-    const octokit = await getOctokitForUser(userId);
     const { data } = await octokit.rest.repos.compareCommitsWithBasehead({
       owner,
       repo,

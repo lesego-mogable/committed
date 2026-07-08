@@ -4,4 +4,7 @@ export type DraftSourceRefs = {
   diffStats?: { filesChanged: number; additions: number; deletions: number };
   prTitle?: string;
   prUrl?: string;
+  isIntro?: boolean;
+  commitCount?: number;
+  projectCreatedAt?: string;
 };

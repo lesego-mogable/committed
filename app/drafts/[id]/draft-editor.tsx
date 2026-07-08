@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { relativeTimeAgo } from "@/lib/format";
+import { relativeTimeAgo, formatMonthDay } from "@/lib/format";
 import type { DraftSourceRefs } from "@/lib/draft-types";
 
 const MAX_LENGTH = 3000;
@@ -98,7 +98,7 @@ export function DraftEditor({ draftId }: { draftId: string }) {
   const refs = draft.sourceRefs;
   const commits = refs.commits ?? [];
   const prNumber = prNumberFromUrl(refs.prUrl);
-  const contextLabel = prNumber ? `pr#${prNumber}` : `${commits.length} commits`;
+  const contextLabel = refs.isIntro ? "intro post" : prNumber ? `pr#${prNumber}` : `${commits.length} commits`;
 
   return (
     <div>
@@ -113,7 +113,7 @@ export function DraftEditor({ draftId }: { draftId: string }) {
         <span className="font-semibold text-[12px] text-term-text-primary">{draft.trackedRepo.fullName}</span>
         <span className="text-[10px] text-term-text-meta">
           {contextLabel} · {relativeTimeAgo(draft.createdAt)}
-          {!prNumber && ` · ${commits.length} commits`}
+          {!refs.isIntro && !prNumber && ` · ${commits.length} commits`}
         </span>
       </div>
 
@@ -165,7 +165,16 @@ export function DraftEditor({ draftId }: { draftId: string }) {
           <div className="mb-2 font-semibold text-[9px] uppercase tracking-[0.1em] text-term-text-faint">
             context
           </div>
-          {prNumber ? (
+          {refs.isIntro ? (
+            <>
+              <div className="mb-0.5 font-medium text-[11px] text-term-text-secondary">Project introduction</div>
+              <div className="mb-2.5 text-[10px] leading-[1.4] text-term-text-body">
+                {refs.commitCount !== undefined && `${refs.commitCount} commits total`}
+                {refs.commitCount !== undefined && refs.projectCreatedAt && " · "}
+                {refs.projectCreatedAt && `started ${formatMonthDay(refs.projectCreatedAt)}`}
+              </div>
+            </>
+          ) : prNumber ? (
             <>
               <div className="mb-0.5 font-medium text-[11px] text-term-text-secondary">
                 Merged PR #{prNumber}
@@ -175,7 +184,9 @@ export function DraftEditor({ draftId }: { draftId: string }) {
           ) : null}
           {commits.length > 0 && (
             <div className="mb-2 border-t border-term-border pt-2">
-              <div className="mb-1.5 text-[10px] text-term-text-meta">{commits.length} commits</div>
+              <div className="mb-1.5 text-[10px] text-term-text-meta">
+                {refs.isIntro ? "recent commits" : `${commits.length} commits`}
+              </div>
               <div className="flex flex-col gap-0.5">
                 {commits.slice(0, 3).map((c) => (
                   <div key={c.sha} className="text-[10px] text-term-text-body">

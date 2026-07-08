@@ -65,3 +65,51 @@ export async function generateDraft(input: DraftInput): Promise<DraftResult> {
 
   return { content, model: DEPLOYMENT };
 }
+
+const INTRO_SYSTEM_PROMPT = `You write concise, engaging LinkedIn posts introducing a developer's existing side project to their network for the first time.
+Rules:
+- First-person voice, as if the developer wrote it themselves.
+- 800-1200 characters.
+- No corporate-speak, no excessive emoji, no hashtags anywhere in the post.
+- Use the project description and README to explain what the project is, why it exists, and what it currently does — this is the reader's first introduction to it, so don't assume they know anything about it.
+- Use the commit history/count/age to give a sense of how much work has gone into it and how mature it is, without reciting a changelog.
+- Output only the post text, nothing else.`;
+
+export type IntroDraftInput = {
+  repoFullName: string;
+  repoDescription?: string;
+  readmeExcerpt?: string;
+  createdAt?: string;
+  commitCount?: number;
+  recentCommits: DraftCommit[];
+};
+
+export async function generateIntroDraft(input: IntroDraftInput): Promise<DraftResult> {
+  const lines = [
+    `Repository: ${input.repoFullName}`,
+    input.repoDescription ? `Project description: ${input.repoDescription}` : null,
+    input.readmeExcerpt ? `Project README:\n${input.readmeExcerpt}` : null,
+    input.createdAt ? `Project started: ${input.createdAt}` : null,
+    input.commitCount ? `Total commits to date: ${input.commitCount}` : null,
+    "Recent commits (for a sense of current focus, not a full history):",
+    ...input.recentCommits.map((c) => `- ${c.message}`),
+  ].filter(Boolean);
+
+  const completion = await client.chat.completions.create({
+    model: DEPLOYMENT,
+    max_tokens: 1024,
+    messages: [
+      { role: "system", content: INTRO_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: `Write a LinkedIn post introducing this existing project to my network for the first time, using the context below.\n\n${lines.join("\n")}`,
+      },
+    ],
+  });
+
+  const content =
+    completion.choices[0]?.message?.content ??
+    "(The model did not return text — please write this post manually.)";
+
+  return { content, model: DEPLOYMENT };
+}
