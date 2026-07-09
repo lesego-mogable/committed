@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session";
 import { getOctokitForUser, tryGetRepoContext, tryGetCommitCount, tryGetRecentCommits } from "@/lib/github";
 import { generateIntroDraft } from "@/lib/ai/generateDraft";
+import { estimateCostUsd } from "@/lib/usage";
 
 const RECENT_COMMITS_SAMPLE_SIZE = 10;
 
@@ -25,7 +26,7 @@ export async function POST(
     tryGetRecentCommits(octokit, trackedRepo.owner, trackedRepo.name, RECENT_COMMITS_SAMPLE_SIZE),
   ]);
 
-  const { content, model } = await generateIntroDraft({
+  const { content, model, usage } = await generateIntroDraft({
     repoFullName: trackedRepo.fullName,
     repoDescription: repoContext?.description,
     readmeExcerpt: repoContext?.readmeExcerpt,
@@ -41,6 +42,10 @@ export async function POST(
       content,
       originalContent: content,
       aiModel: model,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
+      costUsd: estimateCostUsd(usage),
       sourceRefs: {
         commits: recentCommits,
         isIntro: true,

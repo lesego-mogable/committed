@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import { getOctokitForUser, tryGetRepoContext } from "@/lib/github";
 import { generateDraft, type DraftCommit } from "@/lib/ai/generateDraft";
+import { estimateCostUsd } from "@/lib/usage";
 
 export const maxDuration = 60;
 
@@ -91,7 +92,7 @@ async function handlePush(
     tryGetRepoContext(octokit, trackedRepo.owner, trackedRepo.name),
   ]);
 
-  const { content, model } = await generateDraft({
+  const { content, model, usage } = await generateDraft({
     repoFullName: payload.repository.full_name,
     repoDescription: repoContext?.description,
     readmeExcerpt: repoContext?.readmeExcerpt,
@@ -107,6 +108,10 @@ async function handlePush(
       content,
       originalContent: content,
       aiModel: model,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
+      costUsd: estimateCostUsd(usage),
       sourceRefs: { commits, compareUrl: payload.compare, diffStats: diffStats ?? undefined },
     },
   });
@@ -131,7 +136,7 @@ async function handlePullRequest(
   const octokit = await getOctokitForUser(trackedRepo.userId);
   const repoContext = await tryGetRepoContext(octokit, trackedRepo.owner, trackedRepo.name);
 
-  const { content, model } = await generateDraft({
+  const { content, model, usage } = await generateDraft({
     repoFullName: payload.repository.full_name,
     repoDescription: repoContext?.description,
     readmeExcerpt: repoContext?.readmeExcerpt,
@@ -147,6 +152,10 @@ async function handlePullRequest(
       content,
       originalContent: content,
       aiModel: model,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
+      costUsd: estimateCostUsd(usage),
       sourceRefs: { commits, prTitle: payload.pull_request.title, prUrl: payload.pull_request.html_url },
     },
   });

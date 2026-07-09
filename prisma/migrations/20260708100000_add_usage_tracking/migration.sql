@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Draft" ADD COLUMN "promptTokens" INTEGER;
+ALTER TABLE "Draft" ADD COLUMN "completionTokens" INTEGER;
+ALTER TABLE "Draft" ADD COLUMN "totalTokens" INTEGER;
+ALTER TABLE "Draft" ADD COLUMN "costUsd" DOUBLE PRECISION;

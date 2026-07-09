@@ -1,4 +1,5 @@
 import { AzureOpenAI } from "openai";
+import type { CompletionUsage } from "openai/resources/completions";
 
 const DEPLOYMENT = process.env.AZURE_OPENAI_DEPLOYMENT ?? "";
 
@@ -31,7 +32,17 @@ export type DraftInput = {
   prBody?: string;
 };
 
-export type DraftResult = { content: string; model: string };
+export type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number };
+
+export type DraftResult = { content: string; model: string; usage: TokenUsage };
+
+function toTokenUsage(usage: CompletionUsage | undefined): TokenUsage {
+  return {
+    promptTokens: usage?.prompt_tokens ?? 0,
+    completionTokens: usage?.completion_tokens ?? 0,
+    totalTokens: usage?.total_tokens ?? 0,
+  };
+}
 
 export async function generateDraft(input: DraftInput): Promise<DraftResult> {
   const lines = [
@@ -63,7 +74,7 @@ export async function generateDraft(input: DraftInput): Promise<DraftResult> {
     completion.choices[0]?.message?.content ??
     "(The model did not return text — please write this post manually.)";
 
-  return { content, model: DEPLOYMENT };
+  return { content, model: DEPLOYMENT, usage: toTokenUsage(completion.usage) };
 }
 
 const INTRO_SYSTEM_PROMPT = `You write concise, engaging LinkedIn posts introducing a developer's existing side project to their network for the first time.
@@ -111,5 +122,5 @@ export async function generateIntroDraft(input: IntroDraftInput): Promise<DraftR
     completion.choices[0]?.message?.content ??
     "(The model did not return text — please write this post manually.)";
 
-  return { content, model: DEPLOYMENT };
+  return { content, model: DEPLOYMENT, usage: toTokenUsage(completion.usage) };
 }

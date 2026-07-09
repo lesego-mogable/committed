@@ -63,16 +63,20 @@ enum DraftStatus {
 }
 
 model Draft {
-  id              String      @id @default(cuid())
-  userId          String
-  trackedRepoId   String
-  status          DraftStatus @default(pending)
-  content         String
-  originalContent String
-  sourceRefs      Json
-  aiModel         String
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  userId           String
+  trackedRepoId    String
+  status           DraftStatus @default(pending)
+  content          String
+  originalContent  String
+  sourceRefs       Json
+  aiModel          String
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+  costUsd          Float?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   trackedRepo TrackedRepo  @relation(fields: [trackedRepoId], references: [id], onDelete: Cascade)
